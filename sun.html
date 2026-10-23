@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sunflowers — drawn into bloom</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;background:#020204;color:#eee;font-family:system-ui,-apple-system,sans-serif}
+body{display:grid;place-items:center;overflow:hidden}
+.stage{position:relative;width:min(100vw,560px);height:min(100vh,960px);min-height:540px;background:#020204;overflow:hidden}
+#art{position:absolute;inset:0;width:100%;height:100%}
+.petalfill,.leaf-fill,.stem-fill,.center-fill{opacity:0;transition:opacity .6s ease}
+.drawline{fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:var(--length,500);stroke-dashoffset:var(--length,500)}
+.drawline.draw{animation:draw .7s cubic-bezier(.3,.7,.25,1) forwards}
+.show{opacity:1}
+@keyframes draw{to{stroke-dashoffset:0}}
+@media(max-height:650px){.stage{min-height:0}}
+</style>
+</head>
+<body>
+<main class="stage" id="stage">
+<svg id="art" viewBox="0 0 560 960" role="img" aria-label="A cluster of sunflowers gradually drawn and painted on a black background">
+<defs>
+ <radialGradient id="bgGlow"><stop stop-color="#28200b" stop-opacity=".55"/><stop offset="1" stop-color="#020204" stop-opacity="0"/></radialGradient>
+ <linearGradient id="stem" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#32471c"/><stop offset=".35" stop-color="#78913a"/><stop offset=".6" stop-color="#526d2c"/><stop offset="1" stop-color="#1e3219"/></linearGradient>
+ <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a0a84c"/><stop offset=".4" stop-color="#617d2c"/><stop offset="1" stop-color="#243a1b"/></linearGradient>
+ <linearGradient id="petalA" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff3a1"/><stop offset=".32" stop-color="#ffd94d"/><stop offset=".7" stop-color="#f5a91d"/><stop offset="1" stop-color="#b96511"/></linearGradient>
+ <linearGradient id="petalB" x1="0" y1="0" x2=".8" y2="1"><stop stop-color="#fff0a0"/><stop offset=".45" stop-color="#ffcb35"/><stop offset="1" stop-color="#d88113"/></linearGradient>
+ <radialGradient id="disk"><stop stop-color="#8c4b1c"/><stop offset=".58" stop-color="#573016"/><stop offset=".82" stop-color="#2d1a10"/><stop offset="1" stop-color="#130d08"/></radialGradient>
+ <filter id="softGlow"><feGaussianBlur stdDeviation="22"/></filter>
+ <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".7" numOctaves="2" seed="13"/><feColorMatrix values="0 0 0 0 .6 0 0 0 0 .5 0 0 0 0 .2 0 0 0 .12 0"/></filter>
+</defs>
+<rect width="560" height="960" fill="#020204"/>
+<ellipse cx="285" cy="495" rx="220" ry="300" fill="url(#bgGlow)" filter="url(#softGlow)"/>
+<g id="flowers"></g>
+<rect width="560" height="960" filter="url(#grain)" opacity=".16" pointer-events="none"/>
+</svg>
+</main>
+<script>
+const NS='http://www.w3.org/2000/svg', root=document.getElementById('flowers');
+const defs=document.querySelector('defs');
+const make=(tag,attrs={},parent=root)=>{const e=document.createElementNS(NS,tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,v);parent.appendChild(e);return e};
+const flowers=[
+ 
+ {x:205,y:390,r:52,n:23,a:-9,endX:185,endY:735,seed:1},
+ {x:330,y:355,r:62,n:25,a:3,endX:352,endY:750,seed:2},
+ {x:270,y:470,r:47,n:22,a:5,endX:270,endY:780,seed:3},
+ {x:385,y:480,r:43,n:21,a:-7,endX:390,endY:755,seed:4},
+ {x:155,y:490,r:39,n:20,a:8,endX:145,endY:740,seed:5}
+];
+let sequence=[];
+function addPaintLine(d,color,width,group,delay=0){
+ const p=make('path',{d,stroke:color,'stroke-width':width,class:'drawline'},group);
+ sequence.push({el:p,delay,kind:'line'});return p;
+}
+function addFill(el,delay){el.classList.add('petalfill');sequence.push({el,delay,kind:'fill'});return el}
+function leafPath(x,y,dx,dy,s){
+ const p=make('path',{d:`M ${x} ${y} C ${x+dx*.22-s*12} ${y+dy*.18-s*15}, ${x+dx*.68-s*17} ${y+dy*.76-s*8}, ${x+dx} ${y+dy} C ${x+dx*.55} ${y+dy*.98+s*13}, ${x+dx*.18} ${y+dy*.45+s*13}, ${x} ${y} Z`,fill:'url(#leaf)',stroke:'#293d1a','stroke-width':1.7});
+ addFill(p,0);
+ addPaintLine(`M ${x+2} ${y+2} Q ${x+dx*.46} ${y+dy*.53} ${x+dx} ${y+dy}`,'#b5b75d',1.3,root,0);
+ 
+ const h=make('path',{d:`M ${x+5} ${y+3} Q ${x+dx*.3} ${y+dy*.35} ${x+dx*.55} ${y+dy*.57}`,fill:'none',stroke:'#c4c66a','stroke-width':2.2,opacity:.5,class:'petalfill'});
+ sequence.push({el:h,delay:0,kind:'fill'});
+}
+function buildFlower(f,index){
+ const g=make('g',{'data-flower':index});
+ const baseDelay=index*850;
+ 
+ const sx=f.x+(f.endX-f.x)*.3, sy=f.endY;
+ const stemD=`M ${f.endX} ${f.endY} C ${f.endX-12} ${f.endY-90}, ${sx+18} ${f.y+150}, ${f.x} ${f.y+f.r*.55}`;
+ const stem=make('path',{d:stemD,fill:'none',stroke:'url(#stem)','stroke-width':8,'stroke-linecap':'round',class:'petalfill'},g);
+ sequence.push({el:stem,delay:baseDelay+100,kind:'fill'});
+ addPaintLine(stemD,'#82934a',2.2,g,baseDelay+100);
+ 
+ const leafY1=f.endY-110, leafY2=f.endY-190;
+ leafPath(f.endX-5,leafY1,-48,-40,index%2?1:-1);
+ leafPath(f.endX+2,leafY2,45,-47,index%2?-1:1);
+ 
+ for(let k=0;k<8;k++){
+   const a=(k/8)*Math.PI*2;
+   const x1=f.x+Math.cos(a)*f.r*.68,y1=f.y+Math.sin(a)*f.r*.68;
+   const x2=f.x+Math.cos(a)*f.r*1.02,y2=f.y+Math.sin(a)*f.r*1.02;
+   const x3=f.x+Math.cos(a+.22)*f.r*.72,y3=f.y+Math.sin(a+.22)*f.r*.72;
+   const sep=make('path',{d:`M${x1} ${y1} Q${x2} ${y2} ${x3} ${y3}Z`,fill:'url(#leaf)',stroke:'#30421d','stroke-width':1.2},g);
+   addFill(sep,baseDelay+350);
+ }
+ 
+ for(let layer=0;layer<2;layer++){
+  const n=layer===0?f.n:Math.floor(f.n*.72);
+  const inner=layer===0?f.r*.30:f.r*.26;
+  const len=layer===0?f.r*.79:f.r*.72;
+  for(let i=0;i<n;i++){
+   const angle=(i/n)*Math.PI*2+(f.a*Math.PI/180)+(layer*.14);
+   const w=(layer===0?f.r*.17:f.r*.13)*(0.82+0.18*Math.sin(i*2.1+index));
+   const x0=Math.cos(angle)*inner,y0=Math.sin(angle)*inner;
+   const ux=Math.cos(angle),uy=Math.sin(angle), px=-uy,py=ux;
+   const tipR=inner+len*(.88+.12*Math.sin(i*3.7+index));
+   const p1=[f.x+ux*tipR+px*w*.08,f.y+uy*tipR+py*w*.08];
+   const c1=[f.x+ux*(inner+len*.25)+px*w,f.y+uy*(inner+len*.25)+py*w];
+   const c2=[f.x+ux*(inner+len*.73)+px*w*.62,f.y+uy*(inner+len*.73)+py*w*.62];
+   const c3=[f.x+ux*(inner+len*.73)-px*w*.62,f.y+uy*(inner+len*.73)-py*w*.62];
+   const c4=[f.x+ux*(inner+len*.25)-px*w,f.y+uy*(inner+len*.25)-py*w];
+   const p0=[f.x+x0,f.y+y0];
+   const d=`M${p0[0]} ${p0[1]} C${c1[0]} ${c1[1]} ${c2[0]} ${c2[1]} ${p1[0]} ${p1[1]} C${c3[0]} ${c3[1]} ${c4[0]} ${c4[1]} ${p0[0]} ${p0[1]}Z`;
+   const path=make('path',{d,fill:layer===0?'url(#petalA)':'url(#petalB)',stroke:layer===0?'#bd7717':'#d18a1b','stroke-width':.9},g);
+   path.classList.add('petalfill');sequence.push({el:path,delay:baseDelay+450+(layer*260)+(i*34),kind:'fill'});
+   
+   const veinD=`M${f.x+ux*(inner+3)} ${f.y+uy*(inner+3)} Q${f.x+ux*(inner+len*.43)+px*w*.18} ${f.y+uy*(inner+len*.43)+py*w*.18} ${f.x+ux*(tipR*.91)} ${f.y+uy*(tipR*.91)}`;
+   addPaintLine(veinD,i%4===0?'#fff0a0':'#e9a52a',.85,g,baseDelay+470+(layer*260)+(i*34));
+  }
+ }
+ 
+ const rim=make('circle',{cx:f.x,cy:f.y,r:f.r*.37,fill:'#8b511d',stroke:'#e4a637','stroke-width':3},g);addFill(rim,baseDelay+1450);
+ const disk=make('circle',{cx:f.x,cy:f.y,r:f.r*.315,fill:'url(#disk)',stroke:'#38200f','stroke-width':2},g);addFill(disk,baseDelay+1530);
+ const inner=make('circle',{cx:f.x,cy:f.y,r:f.r*.25,fill:'#39200f',opacity:.9},g);addFill(inner,baseDelay+1600);
+ 
+ for(let i=0;i<Math.floor(f.r*2.3);i++){
+   const rr=f.r*.29*Math.sqrt((i+.5)/(f.r*2.3));
+   const a=i*2.39996+index*.4;
+   const x=f.x+Math.cos(a)*rr,y=f.y+Math.sin(a)*rr;
+   const dot=make('circle',{cx:x,cy:y,r:.65+(i%4)*.12,fill:i%3===0?'#d09a48':i%2===0?'#17100b':'#6b421f',opacity:.85},g);
+   dot.classList.add('petalfill');sequence.push({el:dot,delay:baseDelay+1620+(i*3),kind:'fill'});
+ }
+ 
+ for(let i=0;i<12;i++){
+  const a=i/12*Math.PI*2, r=f.r*(.9+.07*Math.sin(i*4));
+  const x=f.x+Math.cos(a)*r,y=f.y+Math.sin(a)*r;
+  const fleck=make('path',{d:`M${x} ${y} l${Math.cos(a+.4)*4} ${Math.sin(a+.4)*4}`,stroke:'#fff0a2','stroke-width':1.3,'stroke-linecap':'round',fill:'none',class:'petalfill',opacity:.75},g);
+  sequence.push({el:fleck,delay:baseDelay+1300+i*22,kind:'fill'});
+ }
+}
+flowers.forEach(buildFlower);
+
+let timeouts=[], paused=false;
+function clearAll(){timeouts.forEach(clearTimeout);timeouts=[]}
+function reset(){
+ clearAll();paused=false;document.getElementById('stage').classList.remove('paused');
+ sequence.forEach(item=>{
+  item.el.classList.remove('show','draw');
+  if(item.kind==='line'){item.el.style.setProperty('--length',item.el.getTotalLength());}
+ });
+ 
+ const ordered=sequence.slice().sort((a,b)=>a.delay-b.delay);
+ ordered.forEach(item=>{
+   timeouts.push(setTimeout(()=>{
+     if(item.kind==='line'){item.el.classList.add('draw')}
+     else item.el.classList.add('show');
+   },item.delay));
+ });
+}
+reset();
+</script>
+</main>
+</body>
+</html>
